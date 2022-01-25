@@ -90,7 +90,7 @@ class Model(tf.keras.Model):
         self.alpha = alpha
 
     def call(self, inputs, training=True):
-        x0, adj1, x1 = inputs
+        x0, adj1, x1, sample_weight = inputs
         n = x1.get_shape().as_list()[0]
 
         adj0 = tf.ones((n, 1, 1))
@@ -105,13 +105,10 @@ class Model(tf.keras.Model):
         prob = self.disc(h_0, h_1)[Ellipsis, 0]
 
         self.truth = tf.eye(n)
-        self.sample_weight = tf.where(self.truth==0,
-            tf.ones_like(self.truth),
-            (n-1)*tf.ones_like(self.truth))
 
         prob_flat = tf.reshape(prob, [-1, 1])
         label_flat = tf.reshape(self.truth, [-1, 1])
-        sample_weight = tf.reshape(self.sample_weight, [-1])
+        sample_weight = tf.reshape(sample_weight, [-1])
         cts_loss = self.bce(label_flat, prob_flat, sample_weight=sample_weight)
 
         loss = cts_loss + self.alpha*(cls_loss + self.lmbd*entrpy_loss)

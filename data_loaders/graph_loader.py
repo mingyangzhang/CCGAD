@@ -5,6 +5,7 @@ from tqdm import tqdm
 
 from utils.graph_utils import rwr_sample_subgraph
 from utils.data_utils import preprocess_features
+from sklearn import preprocessing
 
 
 class GraphLoader(object):
@@ -21,19 +22,24 @@ class GraphLoader(object):
 
         self.nx_g = nx.from_numpy_matrix(self.adj)
 
-        self.feats = preprocess_features(graph['feats'])
+        # self.feats = preprocess_features(graph['feats'])
+        # feat_dense = self.feats.todense()
+
+        self.feats = graph['feats']
         feat_dense = self.feats.todense()
+        feat_dense = preprocessing.StandardScaler().fit_transform(feat_dense)
 
 
         self.feat_padded = np.pad(feat_dense, ((1, 0), (0, 0)), 'constant')
         self.adj_padded = np.pad(self.adj, ((1, 0), (1, 0)), 'constant')
 
         self.abnr_labels = np.reshape(graph['label'], (-1, 1))
-        self.subg_size = args.subgraph_size
+        self.class_labels = np.reshape(graph['class'], (-1, 1))
 
+        self.subg_size = args.subgraph_size
         if args.rw_sample == "resample":
             self.subgs = self.sample_subgraphs(np.arange(self.n_nodes))
-            # np.save(f"outputs/{args.dataset}_subgs.npy", self.subgs)
+            np.save(f"outputs/{args.dataset}_subgs.npy", self.subgs)
         else:
             self.subgs = np.load(f"outputs/{args.dataset}_subgs.npy")
 
@@ -52,11 +58,11 @@ class GraphLoader(object):
     def batch_data(self, batch):
 
         node_idxs = batch["node_idxs"]
-
+        n = len(node_idxs)
         subg_node_idxs = self.subgs[node_idxs]
         subg_feats = self.feat_padded[subg_node_idxs + 1]
         subg_adjs = []
-        for i in range(len(node_idxs)):
+        for i in range(n):
             adj = self.adj_padded[np.ix_(subg_node_idxs[i] + 1, subg_node_idxs[i] + 1)]
             adj_norm = adj / (np.sum(adj, axis=1, keepdims=True) + 1e-8)
             subg_adjs.append(adj_norm + np.eye(adj_norm.shape[0]))
@@ -67,10 +73,20 @@ class GraphLoader(object):
 
         ctr_feat = np.copy(subg_feats[:, 0:1, :])
 
+        cls_labels = np.squeeze(self.class_labels[node_idxs])
+
+        sample_w = (
+            np.tile(np.expand_dims(cls_labels, axis=0), (n, 1)) != np.tile(np.expand_dims(cls_labels, axis=1), (1, n))
+        ).astype("int32")
+
+        sample_w = n * sample_w / np.sum(sample_w)
+        sample_w += np.eye(n)
+
         data = {
             "ctx_adj": ctx_adj,
             "ctx_feat": ctx_feat,
             "ctr_feat": ctr_feat,
+            "sample_w": sample_w,
         }
 
         if "ctr_idx" in batch:

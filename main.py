@@ -47,7 +47,7 @@ parser.add_argument('--n_cluster', type=int, default=10)
 parser.add_argument('--lmbd', type=float, default=0.01)
 parser.add_argument('--alpha', type=float, default=1.0)
 
-parser.add_argument('--rw_sample', type=str, default="resample")
+parser.add_argument('--rw_sample', type=str, default="load")
 parser.add_argument('--neg_stat', type=str, default="mean")
 parser.add_argument('--mode', type=str, default='out')
 parser.add_argument('--train', type=str, default="true")
@@ -104,8 +104,9 @@ def train_model(train_data, test_data):
             feat0 = data['ctr_feat']
             adj1 = data['ctx_adj']
             feat1 = data['ctx_feat']
+            sample_w = data['sample_w']
 
-            loss, scalars = train_step((feat0, adj1, feat1))
+            loss, scalars = train_step((feat0, adj1, feat1, sample_w))
             loss_list.append(loss.numpy())
             scalars = {k:v.numpy() for k,v in scalars.items()}
             scalars.update({"lr": optimizer._decayed_lr('float32').numpy()})
@@ -160,8 +161,9 @@ def cluster_nodes(test_data):
         feat0 = data['ctr_feat']
         adj1 = data['ctx_adj']
         feat1 = data['ctx_feat']
+        sample_w = data['sample_w']
 
-        h_0, h_1, c_0, c_1 = cluster_step((feat0, adj1, feat1))
+        h_0, h_1, c_0, c_1 = cluster_step((feat0, adj1, feat1, sample_w))
 
         ctx_hs.append(h_1.numpy())
         ctx_clusters.append(np.argmax(c_1.numpy(), axis=-1))
@@ -255,4 +257,3 @@ if __name__ == "__main__":
 
     with open(f"outputs/{args.dataset}{args.flag}.pkl", "wb") as fw:
         pickle.dump(states_to_save, fw)
-
