@@ -102,7 +102,7 @@ class Model(tf.keras.Model):
 
         cls_loss, entrpy_loss = self.cls_loss((c_0, c_1))
 
-        prob = self.disc(h_0, h_1)[Ellipsis, 0]
+        prob = self.disc(h_0, h_1)
 
         self.truth = tf.eye(n)
 

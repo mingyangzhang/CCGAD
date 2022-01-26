@@ -57,8 +57,9 @@ class Bilinear(tf.keras.layers.Layer):
 
     def call(self, inputs):
         x1, x2 = inputs
-        y = tf.einsum('onm,ijm->ijon', self.w, x2)
-        out = tf.einsum('ijon,ijn->ijo', y, x1) + self.b
+        # y = tf.einsum('onm,ijm->ijon', self.w, x2)
+        # out = tf.einsum('ijon,ijn->ijo', y, x1) + self.b
+        out = tf.einsum('ijn,ijn->ij', x1, x2)
         return out
 
 

@@ -199,7 +199,7 @@ def test_model(test_data, mode):
         h1 = ctx_hs[node_idxs]
         prob = test_step((h0, h1))
 
-        prob = prob.numpy()[0, :]
+        prob = prob.numpy()
         neg_prob = neg_score_stats(prob[1:], args.neg_stat)
         pos_prob = prob[0]
 
